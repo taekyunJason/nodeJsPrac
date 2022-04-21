@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>GIF 채팅방</title>
+</head>
+
+<body>
+    <div>F12를 눌러 console 탭과 network 탭을 확인하세요.</div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io.connect('http://localhost:8005', {
+            //socket.js의 path와 일치시켜야함
+            path: '/socket.io',
+            transports: ['websocket'],
+        });
+        //아래 3줄을 하나의 이벤트로 보고 여러개의 이벤트를 지정해줄 수 있음
+        //news라는 이름의 이벤트를 보고 콜백으로 reply - hello node.js가 전송됨
+        socket.on('news', function (data) {
+            //data는 서버에서 보내준 'hello socket.io'
+            console.log(data);
+            //reply가 이벤트의 이름, 그 뒤가 메시지
+            socket.emit('reply', 'Hello Node.JS');
+        });
+    </script>
+</body>
+
+</html>

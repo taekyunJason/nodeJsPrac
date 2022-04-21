@@ -1,8 +1,10 @@
 const http = require("http");
+const path = require("path");
 const fs = require("fs").promises;
 
 const users = {}; // 데이터 저장용
 fs.readFile(path.join(__dirname, "restFront.html"));
+console.log(__filename);
 
 http
   .createServer(async (req, res) => {
