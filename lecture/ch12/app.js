@@ -5,12 +5,12 @@ const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const nunjucks = require("nunjucks");
 const dotenv = require("dotenv");
+const ColorHash = require("color-hash");
 
 dotenv.config();
-const connect = require("./schemas");
 const webSocket = require("./socket");
 const indexRouter = require("./routes");
-const exp = require("constants");
+const connect = require("./schemas");
 
 const app = express();
 app.set("port", process.env.PORT || 8005);
@@ -38,10 +38,18 @@ app.use(
   })
 );
 
+app.use((req, res, next) => {
+  if (!req.session.color) {
+    const colorHash = new ColorHash();
+    req.session.color = colorHash.hex(req.sessionID);
+  }
+  next();
+});
+
 app.use("/", indexRouter);
 
 app.use((req, res, next) => {
-  const error = new Error("${req.method} ${req.url} 라우터가 없습니다.");
+  const error = new Error(`${req.method} ${req.url} 라우터가 없습니다.`);
   error.status = 404;
   next(error);
 });
@@ -49,7 +57,7 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   res.locals.message = err.message;
   res.locals.error = process.env.NODE_ENV !== "production" ? err : {};
-  res.status(err.status || 5000);
+  res.status(err.status || 500);
   res.render("error");
 });
 
@@ -57,4 +65,4 @@ const server = app.listen(app.get("port"), () => {
   console.log(app.get("port"), "번 포트에서 대기중");
 });
 
-webSocket(server);
+webSocket(server, app);
