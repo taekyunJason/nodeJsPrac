@@ -34,11 +34,15 @@
 </fieldset>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    //네임스페이스로 로컬 호스트 뒤에 /room이 붙어있음
+    //채팅방 목록에 대한 데이터를 실시간으로 전달받기 위해서 웹소켓 서버랑 연결하는 코드
+    //네임스페이스로 제한을 해두면 네임스페이스(채팅방 목록)에 대한 이벤트만 받을수 있음
     const socket = io.connect('http://localhost:8005/room', { // 네임스페이스
         path: '/socket.io',
         transports: ['websocket']
     });
 
+    //'newRoom'이벤트 이름에 해당하는 콜백함수 실행
     socket.on('newRoom', function (data) { // 새 방 이벤트 시 새 방 생성
         const tr = document.createElement('tr');
         let td = document.createElement('td');
@@ -66,6 +70,7 @@
         document.querySelector('table tbody').appendChild(tr); // 화면에 추가
     });
 
+    //'removeRoom'이벤트 이름에 해당하는 콜백함수 실행
     socket.on('removeRoom', function (data) { // 방 제거 이벤트 시 id가 일치하는 방 제거
         document.querySelectorAll('tbody tr').forEach(function (tr) {
             if (tr.dataset.id === data) {

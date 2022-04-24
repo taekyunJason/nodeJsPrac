@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -8,30 +8,38 @@
 
 <body>
     <div>F12를 눌러 console 탭과 network 탭을 확인하세요.</div>
+    <!-- socket.io 서버가 아래의 파일을 express에 넣어줌 / 여기서 404에러가 뜨면 socket.io서버와 express 서버간의 연결이 잘 안된것!-->
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // 프론트와 서버랑 연결할때는 io.connect 를 사용함
+        //io객체는 위의 소스파일에서 제공해줌
         const socket = io.connect('http://localhost:8005', {
             //socket.js의 path와 일치시켜야함
             path: '/socket.io',
+            //처음부터 polling을 시도하지 않고 웹소켓으로 바로 연결시도함
             transports: ['websocket'],
         });
-        //아래 3줄을 하나의 이벤트로 보고 여러개의 이벤트를 지정해줄 수 있음
-        //news라는 이름의 이벤트를 보고 콜백으로 reply - hello node.js가 전송됨
-        socket.on('news', function (data) {
-            //data는 서버에서 보내준 'hello socket.io'
+
+        //socket.io에서는 아래와 같은 이벤트리스너를 여러개 만들어서 각상황에 맞게 응답할 수 있음
+        //'age'라는 이벤트의 콜백이 실행됨, data에는 'age'이벤트의 메시지가 담김
+        socket.on('age', function (data) {
             console.log(data);
-            //reply가 이벤트의 이름, 그 뒤가 메시지
-            socket.emit('reply', 'Hello Node.JS');
+            socket.emit('replyAge', '20살');
+        });
+        //'address'라는 이벤트의 콜백이 실행됨
+        socket.on('address', function (data) {
+            console.log(data);
+            socket.emit('replyAddress', 'I live in Seoul songpagu coding-ro 123');
         });
     </script>
 </body>
 
-</html> -->
+</html>
 
 <!-- a
 a
 a -->
-
+<!-- 
 <!DOCTYPE html>
 <html>
 
@@ -55,6 +63,8 @@ a -->
         //서버에서 메시지가 올때 onmessage가 실행
         //onmessage 안에서 메인 로직을 작성하면 됨
         webSocket.onmessage = function (event) {
+            //event.data가 string이기 때문에 json을 보내려면 json.stringify로 변환해서 보내야함
+            //받는쪽에서는 string을 jsonParse해서 다시 json으로 만들어서 사용해야함
             console.log(event.data);
             //프론트에서 서버로 답장을 보낼때 사용하는 코드
             webSocket.send('클라이언트에서 서버로 답장을 보냅니다');
@@ -62,4 +72,4 @@ a -->
     </script>
 </body>
 
-</html>
+</html> -->

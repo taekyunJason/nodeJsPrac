@@ -41,9 +41,14 @@
 </form>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    //네임스페이스로 로컬 호스트 뒤에 /chat이 붙어있음
+    //채팅방에 대한 데이터를 실시간으로 전달받기 위해서 웹소켓 서버랑 연결하는 코드
+    //네임스페이스로 제한을 해두면 네임스페이스(채팅방)에 대한 이벤트만 받을수 있음
     const socket = io.connect('http://localhost:8005/chat', {
         path: '/socket.io',
     });
+
+    //사용자가 채팅방에 '참여'했을때 콜백함수 실행
     socket.on('join', function (data) {
         const div = document.createElement('div');
         div.classList.add('system');
@@ -52,6 +57,7 @@
         div.appendChild(chat);
         document.querySelector('#chat-list').appendChild(div);
     });
+    //사용자가 채팅방에 '퇴장'했을때 콜백함수 실행
     socket.on('exit', function (data) {
         const div = document.createElement('div');
         div.classList.add('system');
@@ -60,5 +66,8 @@
         div.appendChild(chat);
         document.querySelector('#chat-list').appendChild(div);
     });
+    //사용자가 채팅방에 '채팅 등록'했을때 콜백함수 실행
+    //사용자가 채팅방에 'gif 등록'했을때 콜백함수 실행
+
 </script>
 {% endblock %}
