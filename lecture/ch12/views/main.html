@@ -43,6 +43,8 @@
     });
 
     //'newRoom'이벤트 이름에 해당하는 콜백함수 실행
+    // room.post 라우터 실행시 새로운 방을 그리기
+    //새방에 대한 정보를 data 매개변수로 받아서 그려줌
     socket.on('newRoom', function (data) { // 새 방 이벤트 시 새 방 생성
         const tr = document.createElement('tr');
         let td = document.createElement('td');
