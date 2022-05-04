@@ -1,5 +1,7 @@
 const express = require("express");
-
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const Room = require("../schemas/room");
 const Chat = require("../schemas/chat");
 
@@ -7,7 +9,9 @@ const router = express.Router();
 
 router.get("/", async (req, res, next) => {
   try {
+    //방목록을 가져와서
     const rooms = await Room.find({});
+    //방목록을 넣어줌!
     res.render("main", { rooms, title: "GIF 채팅방" });
   } catch (error) {
     console.error(error);
@@ -35,6 +39,7 @@ router.post("/room", async (req, res, next) => {
     //서버의 역할은 데이터를 프론트로 내려주는 것에서 끝남
     io.of("/room").emit("newRoom", newRoom);
     //방을 생성했으면 방으로 이동해서 입장도 진행시킴
+    //비밀번호가 설정되어 있다면 비밀방, 없다면 공개방
     res.redirect(`/room/${newRoom._id}?password=${req.body.password}`);
   } catch (error) {
     console.error(error);
@@ -58,12 +63,11 @@ router.get("/room/:id", async (req, res, next) => {
     //io.of(/chat).adapter.rooms 안에 방 목록들이 들어있음
     //여기서 req.params.id로 방의 아이디를 가져오고,
     //rooms.id로 접근하면 해당 id를 가지는 방에 들어있는 사용자를 나타냄
-    const { rooms } = io.of("/chat").adapter; //io.of('/chat').adapter/rooms[방아이디]
-    //
-    //
+    //io.of('/chat').adapter/rooms[방아이디]
     //방의 인원 구하기 = io.of("/chat").adapter.rooms[req.params.id].length
-    //
-    //
+    const { rooms } = io.of("/chat").adapter;
+    console.log(io.of("/chat").adapter.rooms[req.params.id]);
+
     //방의 최대인원보다 초과한 경우
     if (
       rooms &&
@@ -73,10 +77,11 @@ router.get("/room/:id", async (req, res, next) => {
       return res.redirect("/?error=허용 인원이 초과하였습니다.");
     }
     //모든 검사가 끝났을때 채팅방 그려주기
+    const chats = await Chat.find({ room: room._id }).sort("createdAt");
     return res.render("chat", {
       room,
       title: room.title,
-      chats: [],
+      chats,
       user: req.session.color,
     });
   } catch (error) {
@@ -103,6 +108,73 @@ router.delete("/room/:id", async (req, res, next) => {
       //room 네임스페이스에 있는 사용자들에게 방이 삭제됨을 알려줌
       req.app.get("io").of("/room").emit("removeRoom", req.params.id);
     }, 2000);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+router.post("/room/:id/chat", async (req, res, next) => {
+  //새로고침을 하면 대화내용이 모두 왼쪽 정렬되는 이유 - 서버를 재시작하기 때문
+  //서버가 유지되는 한 같은 사람이 유지되는데, 서버를 재시작하면 세션 메모리가 날아가서
+  //기존 사용자가 아니라 새로운 사용자로 등록이 되기 때문!
+  //자신의 정보가 날아가버리기 때문!
+  try {
+    const chat = await Chat.create({
+      room: req.params.id,
+      user: req.session.color,
+      chat: req.body.chat,
+    });
+    //req.app.get("io").to(socket.id).emit("chat", chat); => 일대일대화
+    //어떤 네임스페이스 안에서          /방 아이디까지 지정하고/채팅을 emit 하면 해당 방에 있는 사람들에게만 채팅전달
+    //req.app.get("io").of("/chat").emit("chat", chat); 네임스페이스에 전체메시지 전달
+    //req.app.get("io").emit("chat", chat); 나포함 전체 메시지 전달
+    //req.app.get("io").broadcast.emit("chat", chat); 나를 제외한 나머지에게 전달
+    req.app.get("io").of("/chat").to(req.params.id).emit("chat", chat);
+    res.send("ok");
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+try {
+  //uploads 폴더가 없으면 'uploads'폴더 만들기
+  fs.readdirSync("uploads");
+} catch (err) {
+  console.error("uploads 폴더가 없어 uploads 폴더를 생성합니다.");
+  fs.mkdirSync("uploads");
+}
+
+//multer 설정하는 부분
+const upload = multer({
+  storage: multer.diskStorage({
+    destination(req, file, done) {
+      done(null, "uploads/");
+    },
+    filename(req, file, done) {
+      const ext = path.extname(file.originalname);
+      done(null, path.basename(file.originalname, ext) + Date.now() + ext);
+    },
+  }),
+  //파일 용량 - 5mb 제한
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+//gif는 하나씩 업로드 하도록 설정
+router.post("/room/:id/gif", upload.single("gif"), async (req, res, next) => {
+  try {
+    //chat이라는 객체를 프론트로 보내주었을때
+    //chat 속성이 있으면 div태그로 생성
+    //gif 속성이 있으면 img태그로 생성
+    const chat = await Chat.create({
+      room: req.params.id,
+      user: req.session.color,
+      //chat 대신에 파일명으로 파일이 저장된 위치에 업로드
+      gif: req.file.filename,
+    });
+    req.app.get("io").of("/chat").to(req.params.id).emit("chat", chat);
+    res.send("ok");
   } catch (error) {
     console.error(error);
     next(error);

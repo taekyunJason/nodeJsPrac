@@ -31,6 +31,10 @@
             console.log(data);
             socket.emit('replyAddress', 'I live in Seoul songpagu coding-ro 123');
         });
+        socket.on('news', function (data) {
+            console.log(data);
+            socket.emit('reply', 'Hello Node.JS');
+        });
     </script>
 </body>
 

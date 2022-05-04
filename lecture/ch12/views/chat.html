@@ -39,6 +39,7 @@
     <input type="text" id="chat" name="chat">
     <button type="submit">전송</button>
 </form>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
     //네임스페이스로 로컬 호스트 뒤에 /chat이 붙어있음
@@ -68,6 +69,60 @@
     });
     //사용자가 채팅방에 '채팅 등록'했을때 콜백함수 실행
     //사용자가 채팅방에 'gif 등록'했을때 콜백함수 실행
-
+    socket.on('chat', function (data) {
+        const div = document.createElement('div');
+        //내가보낸 메시지인지?(오른쪽에 위치)
+        if (data.user === '{{user}}') {
+            div.classList.add('mine');
+        } else {
+            //다른사람이 보낸 메시지인지? (왼쪽에 위치)
+            div.classList.add('other');
+        }
+        const name = document.createElement('div');
+        name.textContent = data.user;
+        div.appendChild(name);
+        //데이터가 채팅이면
+        if (data.chat) {
+            //div로 표현해주기
+            const chat = document.createElement('div');
+            chat.textContent = data.chat;
+            div.appendChild(chat);
+        } else {
+            //데이터가 gif이면 img로 표현해주기
+            const gif = document.createElement('img');
+            gif.src = '/gif/' + data.gif;
+            div.appendChild(gif);
+        }
+        //글자에도 사용자의 색과 동일하게 주기
+        div.style.color = data.user;
+        document.querySelector('#chat-list').appendChild(div);
+    });
+    document.querySelector('#chat-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (e.target.chat.value) {
+            //특정 채팅방에 채팅입력하는 라우터에 요청 보내기
+            axios.post('/room/{{room._id}}/chat', {
+                chat: this.chat.value,
+            })
+                .then(() => {
+                    e.target.chat.value = '';
+                })
+                .catch((err) => {
+                    console.error(err);
+                });
+        }
+    });
+    document.querySelector('#gif').addEventListener('change', function (e) {
+        console.log(e.target.files);
+        const formData = new FormData();
+        formData.append('gif', e.target.files[0]);
+        axios.post('/room/{{room._id}}/gif', formData)
+            .then(() => {
+                e.target.file = null;
+            })
+            .catch((err) => {
+                console.error(err);
+            });
+    });
 </script>
 {% endblock %}

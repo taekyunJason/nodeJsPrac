@@ -40,9 +40,12 @@
 // };
 
 //socket.io 채팅방 실습
+const cookieParser = require("cookie-parser");
 const SocketIO = require("socket.io");
+const axios = require("axios");
+const cookie = require("cookie-signature");
 
-module.exports = (server, app) => {
+module.exports = (server, app, sessionMiddleware) => {
   //socket.io 서버 만들기 (path는 프론트랑 같아야함)
   const io = SocketIO(server, { path: "/socket.io" });
   //app.set이 express의 변수처럼 사용됨
@@ -52,6 +55,21 @@ module.exports = (server, app) => {
   //프론트에서 작성한 네임스페이스를 io.of로 생성해줌
   const room = io.of("/room");
   const chat = io.of("/chat");
+
+  io.use((socket, next) => {
+    //(req,res,next) 미들웨어 확장패턴
+    //미들웨어() 뒤에 (req,res,next)하면 다른 미들웨어 안에서도 또다른 미들웨어 사용가능
+
+    //쿠키파서, 세션미들웨어를 socket.request에 적용하면
+    //socket.request에 쿠키도 생기고 세션도 생김
+    cookieParser(process.env.COOKIE_SECRET)(
+      socket.request,
+      socket.request.res || {},
+      next
+    );
+    //console.log("socket.request.res", socket.request.res);
+    sessionMiddleware(socket.request, {}, next);
+  });
 
   //각각의 네임스페이스별로 connection 만들어주기
   room.on("connection", (socket) => {
@@ -67,6 +85,9 @@ module.exports = (server, app) => {
     const {
       headers: { referer },
     } = req;
+
+    console.log("referer: ", referer);
+
     //주소에서 roomId를 추출하는 코드
     //프론트에서 서버로 넘어오는 데이터 확인하기!
     const roomId = referer
@@ -76,13 +97,50 @@ module.exports = (server, app) => {
     //roomId를 같이 웹소켓으로 보내줌
     //그럼 웹소켓에서 해당 roomId에 들어가있는 사람들끼리 채팅이 가능
     socket.join(roomId);
+    socket.to(roomId).emit("join", {
+      user: "system",
+      chat: `${req.session.color}님이 입장하셨습니다.`,
+    });
 
     socket.on("disconnect", () => {
       console.log("chat 네임스페이스 접속 해제");
       //socket.io에서 제공하는 내장함수
       socket.leave(roomId);
+      const currentRoom = socket.adapter.rooms[roomId];
+      const userCount = currentRoom ? currentRoom.length : 0;
+      if (userCount === 0) {
+        // 유저가 0명이면 방 삭제
+        const signedCookie = cookie.sign(
+          req.signedCookies["connect.sid"],
+          process.env.COOKIE_SECRET
+        );
+        const connectSID = `${signedCookie}`;
+        axios
+          .delete(`http://localhost:8005/room/${roomId}`, {
+            //헤더를 추가해야 서버에서 누가 axios.delete요청을 보낸건지 확인이 가능!
+            //${connectSID}를 보낼때 앞에 's%3A'를 붙여야함!
+            headers: {
+              Cookie: `connect.sid=s%3A${connectSID}`,
+            },
+          })
+          .then(() => {
+            console.log(`${roomId}방 제거 요청 성공`);
+          })
+          .catch((error) => {
+            console.error(error);
+          });
+      } else {
+        socket.to(roomId).emit("exit", {
+          user: "system",
+          chat: `${req.session.color}님이 퇴장하셨습니다.`,
+        });
+      }
+    });
+    socket.on("chat", (data) => {
+      socket.to(data.room).emit(data);
     });
   });
+  //socketId로 특정사람과 1대1로도 대화가능
 };
 
 //

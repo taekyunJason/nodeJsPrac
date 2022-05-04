@@ -23,22 +23,24 @@ nunjucks.configure("views", {
 //서버 실행되면서 몽고디비 바로 연결
 connect();
 
+const sessionMiddleware = session({
+  resave: false,
+  saveUninitialized: false,
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true,
+    secure: false,
+  },
+});
 app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
+//'/gif'-프론트 요청주소, 서버의 실제 주소
+//chat.html의 93번줄에서 요청주소를 붙여서 요청을 해서 서버에서도 붙여야 함
+app.use("/gif", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
-app.use(
-  session({
-    resave: false,
-    saveUninitialized: false,
-    secret: process.env.COOKIE_SECRET,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-    },
-  })
-);
+app.use(sessionMiddleware);
 
 //특정 사용자가 같은 사용자라는 것을 구분하기 위해 방안에서 같은 컬러로 표시
 app.use((req, res, next) => {
@@ -75,7 +77,7 @@ const server = app.listen(app.get("port"), () => {
 
 //socket.js파일에 server와 app을 매개변수로 같이 넘겨줌
 //socket.js에서 라우터와 socket.io를 연결해야하기 때문!
-webSocket(server, app);
+webSocket(server, app, sessionMiddleware);
 
 //
 //
